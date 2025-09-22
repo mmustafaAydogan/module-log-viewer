@@ -1,0 +1,18 @@
+{
+  "name": "mustafa/module-log-viewer",
+  "description": "Real-time log viewer for Magento 2",
+  "type": "magento2-module",
+  "version": "1.0.0",
+  "require": {
+    "php": "~8.1.0|~8.2.0|~8.3.0",
+    "magento/framework": "*"
+  },
+  "autoload": {
+    "files": [
+      "registration.php"
+    ],
+    "psr-4": {
+      "Mustafa\\LogViewer\\": "src/"
+    }
+  }
+}

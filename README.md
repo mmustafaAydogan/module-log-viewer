@@ -31,7 +31,7 @@ However, there are many real-world cases where access to such tools is limited, 
 ### Via Composer
 
 ```
-composer require mustafa/module-log-viewer
+composer require mmustafaydogan/module-log-viewer:dev-main
 php bin/magento module:enable Mustafa_LogViewer
 php bin/magento setup:upgrade
 php bin/magento setup:di:compile
@@ -144,7 +144,7 @@ Scenario: Monitoring critical operation during deployment
 ## Author
 
 **Mustafa.Aydoğan**
-- Module: mustafa/module-log-viewer
+- Module: mmustafaydogan/module-log-viewer
 - Version: 1.0.0
 
 ## Acknowledgments

@@ -1,0 +1,275 @@
+<?php
+/**
+ * @var $block \Magento\Backend\Block\Template
+ */
+?>
+<div class="log-viewer-container">
+    <div class="admin__page-section">
+        <div class="admin__page-section-title">
+            <span class="title"><?= __('Real-time Log Viewer') ?></span>
+        </div>
+        <div class="admin__page-section-content">
+            <div class="log-controls">
+                <div class="admin__field">
+                    <label class="admin__field-label"><?= __('Log File') ?></label>
+                    <select id="log-file-select" class="admin__control-select">
+                        <?php foreach ($block->getLogFiles() as $logFile): ?>
+                            <option value="<?= $block->escapeHtmlAttr($logFile) ?>">
+                                <?= $block->escapeHtml($logFile) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="admin__field">
+                    <label class="admin__field-label"><?= __('Lines') ?></label>
+                    <select id="log-limit" class="admin__control-select">
+                        <option value="50">50</option>
+                        <option value="100" selected>100</option>
+                        <option value="200">200</option>
+                        <option value="500">500</option>
+                    </select>
+                </div>
+                <div class="admin__field">
+                    <label class="admin__field-label"><?= __('Auto Refresh Time') ?></label>
+                    <select id="log-refresh-time" class="admin__control-select">
+                        <option value="5"><?= __('%1 second', 5)?></option>
+                        <option value="15" selected><?= __('%1 second', 15)?></option>
+                        <option value="30"><?= __('%1 second', 30)?></option>
+                        <option value="60"><?= __('%1 minute', 1)?></option>
+                        <option value="300"><?= __('%1 minute', 5)?></option>
+                    </select>
+                </div>
+                <div class="admin__field">
+                    <label class="admin__field-label">
+                        <input type="checkbox" id="error-only" class="admin__control-checkbox"/>
+                        <span><?= __('Errors Only') ?></span>
+                    </label>
+                </div>
+
+                <button id="refresh-logs" class="action-primary" type="button">
+                    <span><?= __('Refresh') ?></span>
+                </button>
+
+                <button id="auto-refresh-toggle" class="action-secondary" type="button">
+                    <span><?= __('Auto Refresh: OFF') ?></span>
+                </button>
+
+                <button id="clear-display" class="action-secondary" type="button">
+                    <span><?= __('Clear Display') ?></span>
+                </button>
+            </div>
+
+            <div id="log-status" class="message"></div>
+
+            <div class="log-output-wrapper">
+                <pre id="log-output" class="log-output"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .log-viewer-container {
+        padding: 20px;
+    }
+
+    .log-controls {
+        display: flex;
+        gap: 15px;
+        align-items: flex-end;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .log-controls .admin__field {
+        margin-bottom: 0;
+    }
+
+    .log-output-wrapper {
+        background: #1e1e1e;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        max-height: 600px;
+        overflow: auto;
+    }
+
+    .log-output {
+        margin: 0;
+        padding: 15px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        color: #d4d4d4;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    .log-output .error-line {
+        color: #f48771;
+        font-weight: bold;
+    }
+
+    .log-output .warning-line {
+        color: #dcdcaa;
+    }
+
+
+    #log-status {
+        margin-bottom: 10px;
+        padding: 10px 10px 10px 40px; /* Sol taraftan daha fazla padding */
+        border-radius: 4px;
+        display: none;
+        position: relative;
+    }
+
+    #log-status.message-success {
+        display: block;
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    #log-status.message-success::before {
+        content: "✓";
+        position: absolute;
+        left: 12px;
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    #log-status.message-error {
+        display: block;
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    #log-status.message-info {
+        display: block;
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+</style>
+
+<script>
+  require([
+    'jquery',
+    'Magento_Ui/js/modal/alert'
+  ], function($, alert) {
+    'use strict';
+
+    let autoRefreshInterval = null;
+    let isAutoRefresh = false;
+
+    const $logOutput = $('#log-output');
+    const $logStatus = $('#log-status');
+    const $autoRefreshBtn = $('#auto-refresh-toggle');
+
+    function fetchLogs() {
+      const fileName = $('#log-file-select').val();
+      const limit = $('#log-limit').val();
+      const errorOnly = $('#error-only').is(':checked');
+
+      $.ajax({
+        url: '<?= $block->getUrl('logviewer/logs/fetch') ?>',
+        type: 'GET',
+        data: {
+          file: fileName,
+          limit: limit,
+          error_only: errorOnly ? 1 : 0
+        },
+        dataType: 'json',
+        success: function(response) {
+          if (response.success) {
+            displayLogs(response.lines);
+            showStatus('Logs updated - ' + new Date().toLocaleTimeString(), 'success');
+          } else {
+            showStatus('Error: ' + response.message, 'error');
+            $logOutput.text('Error loading logs: ' + response.message);
+          }
+        },
+        error: function(xhr, status, error) {
+          showStatus('AJAX Error: ' + error, 'error');
+          $logOutput.text('Failed to fetch logs. Please check your connection.');
+        }
+      });
+    }
+
+    function displayLogs(lines) {
+      if (!lines || lines.length === 0) {
+        $logOutput.text('No log entries found.');
+        return;
+      }
+
+      let html = '';
+      lines.forEach(function(line) {
+        let cssClass = '';
+        if (/ERROR|CRITICAL|Exception|Fatal/i.test(line)) {
+          cssClass = 'error-line';
+        } else if (/WARNING|WARN/i.test(line)) {
+          cssClass = 'warning-line';
+        }
+        html += '<div class="' + cssClass + '">' + escapeHtml(line) + '</div>';
+      });
+
+      $logOutput.html(html);
+      
+      const outputWrapper = $('.log-output-wrapper')[0];
+      outputWrapper.scrollTop = outputWrapper.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showStatus(message, type) {
+      $logStatus.removeClass('message-success message-error message-info')
+        .addClass('message-' + type)
+        .text(message)
+        .show();
+    }
+
+    function toggleAutoRefresh() {
+      isAutoRefresh = !isAutoRefresh;
+
+      if (isAutoRefresh) {
+        $autoRefreshBtn.find('span').text('<?= __('Auto Refresh: ON') ?>');
+        $autoRefreshBtn.addClass('action-primary').removeClass('action-secondary');
+        fetchLogs();
+        const refreshTime = parseInt($('#log-refresh-time').val()) * 1000;
+        autoRefreshInterval = setInterval(fetchLogs, refreshTime);
+      } else {
+        $autoRefreshBtn.find('span').text('<?= __('Auto Refresh: OFF') ?>');
+        $autoRefreshBtn.removeClass('action-primary').addClass('action-secondary');
+        if (autoRefreshInterval) {
+          clearInterval(autoRefreshInterval);
+          autoRefreshInterval = null;
+        }
+      }
+    }
+
+    $('#log-refresh-time').on('change', function() {
+      if (isAutoRefresh) {
+        clearInterval(autoRefreshInterval);
+        const refreshTime = parseInt($(this).val()) * 1000;
+        autoRefreshInterval = setInterval(fetchLogs, refreshTime);
+        showStatus('Refresh interval updated to ' + $(this).val() + ' seconds', 'info');
+      }
+    });
+    
+    $('#refresh-logs').on('click', fetchLogs);
+    $('#auto-refresh-toggle').on('click', toggleAutoRefresh);
+    $('#clear-display').on('click', function() {
+      $logOutput.empty();
+    });
+
+    $('#log-file-select, #log-limit, #error-only').on('change', function() {
+        fetchLogs();
+    });
+    
+    fetchLogs();
+  });
+</script>

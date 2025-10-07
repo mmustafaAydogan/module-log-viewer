@@ -31,10 +31,8 @@ class Fetch extends Action
         try {
             $logDir = $this->directoryLinks->getPath(\Magento\Framework\App\Filesystem\DirectoryList::LOG);
             $fileName = $this->getRequest()->getParam('file', 'system.log');
-            $offset = (int)$this->getRequest()->getParam('offset', 0);
             $limit = (int)$this->getRequest()->getParam('limit', 100);
             $errorOnly = (bool)$this->getRequest()->getParam('error_only', false);
-            $lastLine = $this->getRequest()->getParam('last_line', '');
 
             if (!preg_match('/^[a-zA-Z0-9_\-]+\.log$/', $fileName)) {
                 throw new \Exception('Invalid file name');

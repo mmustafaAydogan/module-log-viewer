@@ -1,5 +1,5 @@
 {
-  "name": "mustafa/module-log-viewer",
+  "name": "mmustafaydogan/module-log-viewer",
   "description": "Real-time log viewer for Magento 2",
   "type": "magento2-module",
   "version": "1.0.0",
